@@ -17,6 +17,8 @@ from datasets.transforms import pad_if_smaller
 from losses import FocalCELoss
 from .cls import masked_mean
 
+from src.backbones.utae import ShiftResNet18
+
 
 class Segmentor(nn.Module):
     def __init__(self, config, **kwargs):
@@ -31,6 +33,7 @@ class Segmentor(nn.Module):
         pe_t = spec_dict['pe_t']
         max_temp_len = spec_dict['max_temp_len']
         space_encoder_type = spec_dict['space_encoder_type']
+        shift_type = spec_dict['shift_type'] if 'shift_type' in spec_dict else None
         in_dim = config.DATASET.INPUT_DIM[0]
         num_classes = config.DATASET.NUM_CLASSES
         ignore_index = config.LOSS.IGNORE_INDEX
@@ -73,8 +76,13 @@ class Segmentor(nn.Module):
         else:
             raise NotImplementedError
 
+        if shift_type == 'shiftresnet':
+            self.input_shift_block = ShiftResNet18(num_channels=1, backbone='imagenet', interpolation_mode='bicubic',
+                                                   pad_value=0.0)
+
         self.modality = modality
         self.space_encoder_type = space_encoder_type
+        self.shift_type = shift_type
         self.ignore_index = ignore_index
         self.num_classes = num_classes
 
@@ -112,6 +120,11 @@ class Segmentor(nn.Module):
         outputs = {}
 
         data, img_mask, date_pos, temporal_mask, labels = self.parse_inputs(inputs, self.modality)
+
+        if self.shift_type == 'shiftresnet':
+            data = data.permute(0, 2, 1, 3, 4)
+            data = self.input_shift_block.smart_forward_input(data, dates=date_pos)
+            data = data.permute(0, 2, 1, 3, 4)
 
         B, _, T, H, W = data.shape
         num_patches = H * W # patch size 1
