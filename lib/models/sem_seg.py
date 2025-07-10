@@ -33,7 +33,7 @@ class Segmentor(nn.Module):
         pe_t = spec_dict['pe_t']
         max_temp_len = spec_dict['max_temp_len']
         space_encoder_type = spec_dict['space_encoder_type']
-        shift_type = spec_dict['shift_type'] if 'shift_type' in spec_dict else None
+        shift_type = spec_dict['shift_type']
         in_dim = config.DATASET.INPUT_DIM[0]
         num_classes = config.DATASET.NUM_CLASSES
         ignore_index = config.LOSS.IGNORE_INDEX
